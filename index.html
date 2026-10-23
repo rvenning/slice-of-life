@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="gk-version" content="1" data-date="2026-10-23" data-kit="1.10.1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Slice of Life 🍕 — Run the Pizza Shop</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3a30">
+<meta name="description" content="Run your own pizza shop. Listen to the order, build it, bake it, cut it and serve it — and out-pizza the rival across the street.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Slice of Life">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/gk-base.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍕</text></svg>">
+</head>
+<body>
+
+<!-- Splash -->
+<div class="screen active" id="screen-splash">
+  <div class="splash-inner">
+    <canvas class="splash-pie" id="splash-pie" width="150" height="150" aria-hidden="true"></canvas>
+    <h1 class="logo">SLICE<span>OF LIFE</span></h1>
+    <p class="tagline">Listen to the order. Build it. Bake it. Serve it.</p>
+    <button class="btn big" id="btn-continue-as" style="display:none"></button>
+    <button class="btn big" id="btn-start" onclick="App.play()">🍕 Open the Shop</button>
+    <button class="btn ghost" id="btn-install" style="display:none">📲 Add to Home Screen</button>
+    <div class="splash-foot">
+      <span id="sync-badge">…</span>
+      <button class="btn-sound icon-btn">🔊</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile picker (roster + PIN modals rendered by GK.Profiles) -->
+<div class="screen" id="screen-profiles">
+  <header class="bar">
+    <button class="icon-btn" onclick="GK.UI.showScreen('splash')">←</button>
+    <h2>Who's cooking?</h2>
+    <button class="btn-sound icon-btn">🔊</button>
+  </header>
+  <div class="profile-list" id="profile-list"></div>
+</div>
+
+<!-- Today: the next day, the rival, the news -->
+<div class="screen" id="screen-today">
+  <header class="bar">
+    <button class="icon-btn" onclick="App.play()" aria-label="Switch cook">👥</button>
+    <div class="map-player" id="today-player"></div>
+    <button class="icon-btn" onclick="App.showHelp()" aria-label="How to play">❓</button>
+  </header>
+  <div class="tab-body">
+    <div id="hero"></div>
+    <div class="rail-list" id="day-list"></div>
+  </div>
+  <nav class="tabbar" aria-label="Shop"></nav>
+</div>
+
+<!-- The kitchen: ingredients and equipment -->
+<div class="screen" id="screen-kitchen">
+  <header class="bar">
+    <h2>🍳 The Kitchen</h2>
+    <span class="hud money">💵 <b id="kitchen-money">$0.00</b></span>
+  </header>
+  <div class="tab-body">
+    <h3 class="sec-head">Ingredients</h3>
+    <p class="screen-hint">Customers only ask for what you stock. More toppings, more variety — and more to remember.</p>
+    <div class="ing-grid" id="ing-grid"></div>
+    <h3 class="sec-head">Equipment</h3>
+    <div class="shop-list" id="upgrade-list"></div>
+  </div>
+  <nav class="tabbar" aria-label="Shop"></nav>
+</div>
+
+<!-- Decor -->
+<div class="screen" id="screen-decor">
+  <header class="bar">
+    <h2>🪴 The Decor</h2>
+    <span class="hud money">💵 <b id="decor-money">$0.00</b></span>
+  </header>
+  <div class="tab-body">
+    <p class="screen-hint">Just for the look of the place. It shows at the counter, and none of it changes how the day plays.</p>
+    <div id="decor-body"></div>
+  </div>
+  <nav class="tabbar" aria-label="Shop"></nav>
+</div>
+
+<!-- Recipe book and regulars -->
+<div class="screen" id="screen-book">
+  <header class="bar">
+    <h2>📖 The Book</h2>
+    <span class="hud" id="book-count"></span>
+  </header>
+  <div class="tab-body">
+    <h3 class="sec-head">Recipes</h3>
+    <p class="screen-hint">When a customer asks for a pizza by name, this is what they mean. A recipe fills in once somebody orders it.</p>
+    <div class="recipe-list" id="recipe-list"></div>
+    <h3 class="sec-head">Regulars</h3>
+    <p class="screen-hint">Serve enough of somebody and you'll get to know them.</p>
+    <div class="album-list" id="album-list"></div>
+  </div>
+  <nav class="tabbar" aria-label="Shop"></nav>
+</div>
+
+<!-- Leaderboard -->
+<div class="screen" id="screen-leaderboard">
+  <header class="bar">
+    <h2>🏆 Family Leaderboard</h2>
+    <button class="btn-sound icon-btn">🔊</button>
+  </header>
+  <div class="tab-body">
+    <p class="screen-hint">Ranked by how far along the street you are — then by total takings.</p>
+    <div class="lb-rows" id="lb-rows"></div>
+  </div>
+  <nav class="tabbar" aria-label="Shop"></nav>
+</div>
+
+<!-- The day -->
+<div class="screen" id="screen-game">
+  <header class="bar game-bar">
+    <button class="icon-btn" onclick="App.pause()" aria-label="Pause">⏸</button>
+    <div class="clock">
+      <span id="hud-day">Day 1</span>
+      <b id="hud-clock">12:00 PM</b>
+      <span class="clock-track"><i id="hud-clock-fill"></i></span>
+    </div>
+    <span class="hud takings">💵 <b id="hud-money">$0.00</b></span>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <button class="talk what" id="btn-what" onclick="App.what()" aria-label="Ask them to say the order again">🗣 What?</button>
+    <button class="talk hint" id="btn-hint" onclick="App.hint()" aria-label="Show a hint">💡 Hint</button>
+    <div class="hintbox" id="hintbox" role="status"></div>
+    <div class="receipt" id="receipt" role="status"></div>
+  </div>
+  <div class="dock" id="dock">
+    <div class="dock-tabs" id="dock-tabs"></div>
+    <div class="dock-strip" id="dock-strip"></div>
+    <div class="dock-row" id="dock-row"></div>
+  </div>
+</div>
+
+<!-- End of the day -->
+<div class="screen" id="screen-results">
+  <div class="res-inner">
+    <div class="res-day" id="res-day"></div>
+    <div class="res-stars" id="res-stars"></div>
+    <h2 class="res-title" id="res-title"></h2>
+    <div class="res-card" id="res-card"></div>
+    <div class="pnn" id="res-pnn"></div>
+    <p class="res-story" id="res-story"></p>
+    <div class="res-actions">
+      <button class="btn ghost" onclick="App.showToday()">🏠 Shop</button>
+      <button class="btn" id="res-retry" style="display:none"></button>
+      <button class="btn green" id="res-next"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Opening up -->
+<div class="modal" id="modal-open">
+  <div class="modal-box">
+    <h3 id="open-title">Opening Up</h3>
+    <div id="open-body"></div>
+    <label class="switch-row"><span>Show the order ticket</span><button class="switch" id="sw-notes-open" role="switch" onclick="App.toggleNotes(this)"></button></label>
+    <button class="btn green wide" onclick="App.confirmOpen()">Unlock the door!</button>
+    <button class="btn grey wide" onclick="GK.UI.closeModal('modal-open')">Not yet</button>
+  </div>
+</div>
+
+<!-- Pause -->
+<div class="modal" id="modal-pause">
+  <div class="modal-box">
+    <h3>⏸ Paused</h3>
+    <button class="btn green wide" onclick="App.resume()">▶️ Back to work</button>
+    <button class="btn blue wide" onclick="App.showHelp()">❓ How to Play</button>
+    <label class="switch-row"><span>Show the order ticket</span><button class="switch" id="sw-notes" role="switch" onclick="App.toggleNotes(this)"></button></label>
+    <label class="switch-row"><span>Coach tips</span><button class="switch" id="sw-tips" role="switch" onclick="App.toggleTips(this)"></button></label>
+    <div class="modal-actions"><button class="btn-sound icon-btn">🔊</button></div>
+    <button class="btn grey wide" onclick="App.quit()">🚪 Close up early</button>
+  </div>
+</div>
+
+<!-- How to play -->
+<div class="modal" id="modal-help">
+  <div class="modal-box">
+    <h3>❓ How to Play</h3>
+    <p class="help-intro">Customers tell you their order <b>once, out loud</b>. Listen — then make exactly that.</p>
+    <ol class="help-steps">
+      <li>🛎 Tap the customer at the counter to <b>take their order</b>. Missed it? <b>🗣 What?</b> says it again, but they get a little less happy.</li>
+      <li>🥄 Pick a <b>sauce</b> and drag it over the dough. 🧀 Then <b>cheese</b> — drag over it twice for <i>extra</i>.</li>
+      <li>🍄 Tap a <b>topping</b> bin, then tap or drag onto the pizza. <b>Half and half</b> means a different topping on each side.</li>
+      <li>🔥 Send it to the <b>oven</b>. One trip is normal, two is <i>well done</i>, three is <i>extra crispy</i>. Four burns it!</li>
+      <li>🔪 Swipe across the middle to <b>cut</b>. One cut makes 2 slices, two make 4, three make 6 (the usual) and so on.</li>
+      <li>📦 <b>Box</b> it, then <b>hand it over</b>. Wrong order? They hand it back and want their money.</li>
+    </ol>
+    <p class="help-note">You can have <b>three pizzas on the go</b> at once — tap a ticket under the counter to switch between them. Ingredients cost money, so don't pile it on. The recipe book in <b>The Book</b> tab explains every named pizza.</p>
+    <button class="btn green wide" onclick="App.closeHelp()">Got it!</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<canvas id="confetti"></canvas>
+
+<!-- gamekit (vendored from rvenning/gamekit into lib/) -->
+<script src="lib/gk-util.js"></script>
+<script src="lib/gk-audio.js"></script>
+<script src="lib/gk-ui.js"></script>
+<script src="lib/gk-storage.js"></script>
+<script src="lib/gk-profiles.js"></script>
+<script src="lib/gk-pwa.js"></script>
+<script src="lib/gk-fx.js"></script>
+<script src="lib/gk-debug.js"></script>
+<script>
+  // Flour dust and confetti: light, soft, a little gravity.
+  const Fx = GK.Fx.configure({
+    grav: 300, poolCap: 480, shakeMax: 7, shakeDecay: 28, shape: "circle",
+    burstSpeed: 140, burstSize: 2.6, textSize: 15, textDy: -36, textCap: 22,
+    font: "'Baloo 2',sans-serif",
+  });
+</script>
+<script src="js/firebase-config.js"></script>
+<!-- data registries -->
+<script src="js/menu.js"></script>
+<script src="js/pizza.js"></script>
+<script src="js/days.js"></script>
+<script src="js/orders.js"></script>
+<script src="js/upgrades.js"></script>
+<!-- systems -->
+<script src="js/game.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/art.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
